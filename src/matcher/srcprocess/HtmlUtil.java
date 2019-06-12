@@ -12,7 +12,7 @@ public class HtmlUtil {
 		return "field-".concat(escapeId(field.getId()));
 	}
 
-	private static String escapeId(String str) {
+	public static String escapeId(String str) {
 		StringBuilder ret = null;
 		int retEnd = 0;
 
