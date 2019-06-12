@@ -85,6 +85,7 @@ public class Gui extends Application {
 
 		stage.setScene(scene);
 		stage.setTitle("Matcher");
+		stage.setMaximized(true);
 		stage.show();
 	}
 
