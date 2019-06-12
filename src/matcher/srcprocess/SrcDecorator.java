@@ -50,6 +50,8 @@ public class SrcDecorator {
 					src = src.replace(name.replace('$', '.'), name);
 				}
 			}
+
+			src = src.replaceFirst("static([^{]+(class|enum|@?interface))", "$1");
 		}
 
 		CompilationUnit cu;
