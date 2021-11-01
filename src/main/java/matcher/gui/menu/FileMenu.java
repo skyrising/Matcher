@@ -1,33 +1,9 @@
 package matcher.gui.menu;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
-
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
@@ -44,6 +20,16 @@ import matcher.mapping.Mappings;
 import matcher.serdes.MatchesIo;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
+
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 public class FileMenu extends Menu {
 	FileMenu(Gui gui) {
@@ -79,7 +65,7 @@ public class FileMenu extends Menu {
 
 		menuItem = new MenuItem("Save mappings");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMappings(null));
+		menuItem.setOnAction(event -> saveMappings(MappingFormat.TINY_2));
 
 		menuItem = new MenuItem("Save mappings (Enigma)");
 		getItems().add(menuItem);
@@ -198,7 +184,7 @@ public class FileMenu extends Menu {
 		Path file;
 
 		if (format == null || format.hasSingleFile()) {
-			SelectedFile res = Gui.requestFile("Select mapping file", window, getMappingLoadExtensionFilters(), true); // TODO: pre-select format if non-null
+			SelectedFile res = Gui.requestMappingFile("Select mapping file", window, format, true); // TODO: pre-select format if non-null
 			if (res == null) return; // aborted
 
 			file = res.path;
@@ -243,47 +229,16 @@ public class FileMenu extends Menu {
 		gui.onMappingChange();
 	}
 
-	private static List<ExtensionFilter> getMappingLoadExtensionFilters() {
-		MappingFormat[] formats = MappingFormat.values();
-		List<ExtensionFilter> ret = new ArrayList<>(formats.length + 2);
-		List<String> supportedExtensions = new ArrayList<>(formats.length);
-
-		for (MappingFormat format : formats) {
-			if (format.hasSingleFile()) supportedExtensions.add(format.getGlobPattern());
-		}
-
-		ret.add(new FileChooser.ExtensionFilter("All supported", supportedExtensions));
-		ret.add(new FileChooser.ExtensionFilter("Any", "*.*"));
-
-		for (MappingFormat format : formats) {
-			if (format.hasSingleFile()) ret.add(new FileChooser.ExtensionFilter(format.name, format.getGlobPattern()));
-		}
-
-		return ret;
-	}
-
 	private void saveMappings(MappingFormat format) {
 		Window window = gui.getScene().getWindow();
 		Path path;
 
 		if (format == null || format.hasSingleFile()) {
-			FileChooser fileChooser = new FileChooser();
-			fileChooser.setTitle("Save mapping file");
-
-			for (MappingFormat f : MappingFormat.values()) {
-				if (f.hasSingleFile()) {
-					FileChooser.ExtensionFilter filter = new FileChooser.ExtensionFilter(f.name, "*."+f.fileExt);
-					fileChooser.getExtensionFilters().add(filter);
-
-					if (f == format) fileChooser.setSelectedExtensionFilter(filter);
-				}
-			}
-
-			File file = fileChooser.showSaveDialog(window);
+			SelectedFile file = Gui.requestMappingFile("Save mapping file", window, format, false);
 			if (file == null) return;
 
-			path = file.toPath();
-			format = getFormat(fileChooser.getSelectedExtensionFilter().getDescription());
+			path = file.path;
+			format = getFormat(file.filter.getDescription());
 		} else {
 			path = Gui.requestDir("Save mapping dir", window);
 			if (path == null) return;

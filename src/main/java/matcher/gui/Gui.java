@@ -1,20 +1,5 @@
 package matcher.gui;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.Consumer;
-import java.util.function.DoubleConsumer;
-import java.util.stream.Collectors;
-
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -25,25 +10,28 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.RowConstraints;
-import javafx.scene.layout.VBox;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
+import javafx.scene.layout.*;
+import javafx.stage.*;
 import javafx.stage.FileChooser.ExtensionFilter;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
-import javafx.stage.StageStyle;
-import javafx.stage.Window;
 import matcher.Matcher;
 import matcher.NameType;
 import matcher.config.Config;
 import matcher.gui.menu.MainMenuBar;
+import matcher.mapping.MappingFormat;
 import matcher.srcprocess.BuiltinDecompiler;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.util.function.DoubleConsumer;
+import java.util.stream.Collectors;
 
 public class Gui extends Application {
 	@Override
@@ -368,6 +356,38 @@ public class Gui extends Application {
 		return new SelectedFile(file.toPath(), fileChooser.getSelectedExtensionFilter());
 	}
 
+	public static SelectedFile requestMappingFile(String title, Window parent, MappingFormat format, boolean isOpen) {
+		FileChooser fileChooser = setupFileChooser(title, Collections.emptyList(), lastMappingChooserFile);
+
+		MappingFormat[] formats = MappingFormat.values();
+		if (isOpen) {
+			List<String> supportedExtensions = new ArrayList<>(formats.length);
+			for (MappingFormat f : formats) {
+				if (f.hasSingleFile()) supportedExtensions.add(f.getGlobPattern());
+			}
+			fileChooser.getExtensionFilters().addAll(
+				new FileChooser.ExtensionFilter("All supported", supportedExtensions),
+				new FileChooser.ExtensionFilter("Any", "*.*")
+			);
+		}
+
+		for (MappingFormat f : formats) {
+			if (f.hasSingleFile()) {
+				FileChooser.ExtensionFilter filter = new FileChooser.ExtensionFilter(f.name, f.getGlobPattern());
+				fileChooser.getExtensionFilters().add(filter);
+
+				if (f == format) fileChooser.setSelectedExtensionFilter(filter);
+			}
+		}
+
+		File file = isOpen ? fileChooser.showOpenDialog(parent) : fileChooser.showSaveDialog(parent);
+		if (file == null) return null;
+
+		lastMappingChooserFile = file.getParentFile();
+
+		return new SelectedFile(file.toPath(), fileChooser.getSelectedExtensionFilter());
+	}
+
 	public static List<SelectedFile> requestFiles(String title, Window parent, List<ExtensionFilter> extensionFilters) {
 		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
 
@@ -380,6 +400,11 @@ public class Gui extends Application {
 	}
 
 	private static FileChooser setupFileChooser(String title, List<ExtensionFilter> extensionFilters) {
+		return setupFileChooser(title, extensionFilters, lastChooserFile);
+	}
+
+	private static FileChooser setupFileChooser(String title, List<ExtensionFilter> extensionFilters, File lastChooserFile) {
+		if (lastChooserFile == null) lastChooserFile = Gui.lastChooserFile;
 		FileChooser fileChooser = new FileChooser();
 
 		fileChooser.setTitle(title);
@@ -456,4 +481,5 @@ public class Gui extends Application {
 	private BuiltinDecompiler decompiler = BuiltinDecompiler.CFR;
 
 	private static File lastChooserFile;
+	private static File lastMappingChooserFile;
 }
