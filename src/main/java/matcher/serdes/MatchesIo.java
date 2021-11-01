@@ -1,5 +1,8 @@
 package matcher.serdes;
 
+import matcher.Matcher;
+import matcher.type.*;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -7,7 +10,7 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.ZonedDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -15,16 +18,6 @@ import java.util.List;
 import java.util.function.DoubleConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import matcher.Matcher;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.InputFile;
-import matcher.type.LocalClassEnv;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
 
 public class MatchesIo {
 	public static void read(Path path, List<Path> inputDirs, boolean verifyInputs, Matcher matcher, DoubleConsumer progressReceiver) {
@@ -327,7 +320,13 @@ public class MatchesIo {
 
 		try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
 			writer.write("Matches saved ");
-			writer.write(ZonedDateTime.now().toString());
+			writer.write(LocalDate.now().toString());
+			Matcher.MatchingStatus status = matcher.getStatus(true);
+			writer.write(", status:");
+			writer.write(" c:" + status.matchedClassCount + "/" + status.totalClassCount);
+			writer.write(" m:" + status.matchedMethodCount + "/" + status.totalMethodCount);
+			writer.write(" f:" + status.matchedFieldCount + "/" + status.totalFieldCount);
+			writer.write(" ma:" + status.matchedMethodArgCount + "/" + status.totalMethodArgCount);
 			writer.write(", input files:\n\ta:\n");
 			writeInputFiles(env.getInputFilesA(), writer);
 			writer.write("\tb:\n");
