@@ -1,12 +1,5 @@
 package matcher.gui;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import javafx.collections.FXCollections;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
@@ -16,15 +9,10 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import matcher.NameType;
 import matcher.Util;
-import matcher.config.Config;
 import matcher.gui.Gui.SortKey;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.Matchable;
-import matcher.type.MatchType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.type.*;
+
+import java.util.*;
 
 public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelectionProvider {
 	public MatchPaneSrc(Gui gui) {
@@ -214,8 +202,10 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 				return dark ? "-fx-text-fill: silver;" : "-fx-text-fill: dimgray;";
 			} else if (item.getMatch() == null) {
 				return dark ? "-fx-text-fill: #FF006E;" : "-fx-text-fill: darkred;";
-			} else if (!item.isFullyMatched(false)) { // TODO: change recursive to true once arg+var matching is further implemented
+			} else if (!item.isFullyMatched(false)) {
 				return "-fx-text-fill: chocolate;";
+			} else if (!item.isFullyMatched(true)) {
+				return "-fx-text-fill: coral;";
 			} else {
 				return dark ? "-fx-text-fill: #00FF11;" : "-fx-text-fill: darkgreen;";
 			}

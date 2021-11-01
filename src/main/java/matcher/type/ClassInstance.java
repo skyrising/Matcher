@@ -1,24 +1,5 @@
 package matcher.type;
 
-import java.net.URI;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
-
 import matcher.NameType;
 import matcher.SimilarityChecker;
 import matcher.Util;
@@ -26,6 +7,13 @@ import matcher.bcremap.AsmClassRemapper;
 import matcher.bcremap.AsmRemapper;
 import matcher.classifier.ClassifierUtil;
 import matcher.type.Signature.ClassSignature;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.ClassNode;
+
+import java.net.URI;
+import java.util.*;
 
 public final class ClassInstance implements Matchable<ClassInstance> {
 	/**
@@ -309,6 +297,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			for (MethodInstance a : methods) {
 				if (!a.isMatchable() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
 
+				if (recursive && a.hasMatch() && !a.isFullyMatched(true)) return false;
 				// check for any potential match to ignore methods that are impossible to match
 				for (MethodInstance b : matchedClass.methods) {
 					if (b.isMatchable() && !b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
