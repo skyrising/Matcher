@@ -1,11 +1,11 @@
 package matcher.gui;
 
-import java.util.Map;
-
 import javafx.event.ActionEvent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
+
+import java.util.Map;
 
 class Shortcuts {
 	public static void init(Gui gui) {
@@ -25,5 +25,7 @@ class Shortcuts {
 		});
 		// I - ignore (toggle matchable)
 		accelerators.put(new KeyCodeCombination(KeyCode.I), () -> gui.getBottomPane().getMatchableButton().fireEvent(new ActionEvent()));
+		// A - match 100%
+		accelerators.put(new KeyCodeCombination(KeyCode.A), () -> gui.getBottomPane().getMatchPerfectMembersButton().fireEvent(new ActionEvent()));
 	}
 }
