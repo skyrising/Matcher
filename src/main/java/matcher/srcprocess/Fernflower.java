@@ -1,28 +1,15 @@
 package matcher.srcprocess;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.reflect.Field;
-import java.util.AbstractMap;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.jar.Manifest;
-
+import matcher.NameType;
+import matcher.type.ClassEnv;
+import matcher.type.ClassFeatureExtractor;
+import matcher.type.ClassInstance;
 import org.jetbrains.java.decompiler.main.ClassesProcessor;
-import org.jetbrains.java.decompiler.main.DecompilerContext;
 import org.jetbrains.java.decompiler.main.ClassesProcessor.ClassNode;
+import org.jetbrains.java.decompiler.main.DecompilerContext;
+import org.jetbrains.java.decompiler.main.IdentityRenamerFactory;
 import org.jetbrains.java.decompiler.main.decompiler.PrintStreamLogger;
-import org.jetbrains.java.decompiler.main.extern.IBytecodeProvider;
-import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
-import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
-import org.jetbrains.java.decompiler.main.extern.IIdentifierRenamer;
-import org.jetbrains.java.decompiler.main.extern.IResultSaver;
+import org.jetbrains.java.decompiler.main.extern.*;
 import org.jetbrains.java.decompiler.modules.renamer.ConverterHelper;
 import org.jetbrains.java.decompiler.modules.renamer.IdentifierConverter;
 import org.jetbrains.java.decompiler.modules.renamer.PoolInterceptor;
@@ -31,12 +18,15 @@ import org.jetbrains.java.decompiler.struct.IDecompiledData;
 import org.jetbrains.java.decompiler.struct.StructClass;
 import org.jetbrains.java.decompiler.struct.StructContext;
 import org.jetbrains.java.decompiler.struct.lazy.LazyLoader;
+import org.jetbrains.java.decompiler.util.DataInputFullStream;
 import org.jetbrains.java.decompiler.util.TextBuffer;
 
-import matcher.NameType;
-import matcher.type.ClassEnv;
-import matcher.type.ClassFeatureExtractor;
-import matcher.type.ClassInstance;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.jar.Manifest;
 
 public class Fernflower implements Decompiler {
 	@Override
@@ -67,7 +57,7 @@ public class Fernflower implements Decompiler {
 		data.converter = converter;
 
 		IFernflowerLogger logger = new PrintStreamLogger(System.out);
-		DecompilerContext context = new DecompilerContext(properties, logger, structContext, classProcessor, interceptor);
+		DecompilerContext context = new DecompilerContext(properties, logger, structContext, classProcessor, interceptor, new IdentityRenamerFactory());
 		DecompilerContext.setCurrentContext(context);
 
 		try {
@@ -116,9 +106,9 @@ public class Fernflower implements Decompiler {
 				f.setAccessible(true);
 				units = (Map<String, ContextUnit>) f.get(this);
 
-				f = StructContext.class.getDeclaredField("classes");
+				f = StructContext.class.getDeclaredField("ownClasses");
 				f.setAccessible(true);
-				classes = (Map<String, StructClass>) f.get(this);
+				ownClasses = (Map<String, StructClass>) f.get(this);
 			} catch (ReflectiveOperationException e) {
 				throw new RuntimeException(e);
 			}
@@ -142,7 +132,7 @@ public class Fernflower implements Decompiler {
 			if (DEBUG) System.out.printf("getClass(%s)%n", name);
 
 			// use classes as a cache, load anything missing on demand
-			StructClass ret = classes.get(name);
+			StructClass ret = ownClasses.get(name);
 			if (ret != null) return ret;
 
 			ClassInstance cls = env.getClsByName(name, nameType);
@@ -160,8 +150,8 @@ public class Fernflower implements Decompiler {
 			byte[] data = bcProvider.get(name); // BytecodeProvider has a name->byte[] cache to avoid redundant cls.serialize invocations
 			if (data == null) throw new IllegalStateException();
 
-			StructClass cl = new StructClass(data, isOwn, loader);
-			classes.put(cl.qualifiedName, cl);
+			StructClass cl = StructClass.create(new DataInputFullStream(data), isOwn, loader);
+			ownClasses.put(cl.qualifiedName, cl);
 
 			ContextUnit unit = isOwn ? ownedUnit : unownedUnit;
 			unit.addClass(cl, name.substring(name.lastIndexOf('/') + 1)+".class");
@@ -171,7 +161,7 @@ public class Fernflower implements Decompiler {
 		}
 
 		@Override
-		public Map<String, StructClass> getClasses() {
+		public Map<String, StructClass> getOwnClasses() {
 			return emulatedClasses;
 		}
 
@@ -180,7 +170,7 @@ public class Fernflower implements Decompiler {
 		protected final NameType nameType;
 		protected final BytecodeProvider bcProvider;
 		protected final Map<String, ContextUnit> units;
-		protected final Map<String, StructClass> classes;
+		protected final Map<String, StructClass> ownClasses;
 		protected final ContextUnit ownedUnit;
 		protected final ContextUnit unownedUnit;
 
@@ -199,12 +189,12 @@ public class Fernflower implements Decompiler {
 
 			@Override
 			public int size() {
-				return classes.size();
+				return ownClasses.size();
 			}
 
 			@Override
 			public Set<Map.Entry<String, StructClass>> entrySet() {
-				Set<Map.Entry<String, StructClass>> snapshot = new HashSet<>(classes.entrySet()); // copy to hide concurrent modifications from on-demand additions
+				Set<Map.Entry<String, StructClass>> snapshot = new HashSet<>(ownClasses.entrySet()); // copy to hide concurrent modifications from on-demand additions
 
 				return snapshot;
 			}
