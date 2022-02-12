@@ -1,8 +1,8 @@
 package matcher.type;
 
-import java.util.Collection;
-
 import matcher.NameType;
+
+import java.util.Collection;
 
 public interface ClassEnv {
 	boolean isShared();
@@ -34,4 +34,5 @@ public interface ClassEnv {
 	ClassInstance getClsById(String id, NameType nameType);
 
 	ClassEnvironment getGlobal();
+	ClassEnv getOther();
 }

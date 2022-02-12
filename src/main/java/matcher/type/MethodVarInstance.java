@@ -3,8 +3,9 @@ package matcher.type;
 import matcher.NameType;
 import matcher.SimilarityChecker;
 import matcher.Util;
+import matcher.classifier.ClassifierUtil;
 
-public class MethodVarInstance implements Matchable<MethodVarInstance> {
+public final class MethodVarInstance implements Matchable<MethodVarInstance> {
 	MethodVarInstance(MethodInstance method, boolean isArg, int index, int lvIndex, int asmIndex,
 			ClassInstance type, int startInsn, int endInsn, int startOpIdx,
 			String origName, boolean nameObfuscated) {
@@ -19,6 +20,11 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		this.startOpIdx = startOpIdx;
 		this.origName = origName;
 		this.nameObfuscated = nameObfuscated;
+	}
+
+	@Override
+	public MatchableKind getKind() {
+		return isArg ? MatchableKind.METHOD_ARG : MatchableKind.METHOD_VAR;
 	}
 
 	public MethodInstance getMethod() {
@@ -184,6 +190,7 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		this.mappedName = mappedName;
 	}
 
+	@Override
 	public String getMappedComment() {
 		if (mappedComment != null) {
 			return mappedComment;
@@ -194,6 +201,7 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		}
 	}
 
+	@Override
 	public void setMappedComment(String comment) {
 		if (comment != null && comment.isEmpty()) comment = null;
 
@@ -211,16 +219,30 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	}
 
 	@Override
+	public boolean hasPotentialMatch() {
+		if (matchedInstance != null) return true;
+		if (!method.hasMatch() || !isMatchable()) return false;
+
+		for (MethodVarInstance o : (isArg ? method.getMatch().getArgs() : method.getMatch().getVars())) {
+			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		}
+
+		return false;
+	}
+
+	@Override
 	public boolean isMatchable() {
 		return matchable && method.isMatchable();
 	}
 
 	@Override
-	public void setMatchable(boolean matchable) {
-		assert !matchable || method.isMatchable();
-		assert matchable || matchedInstance == null;
+	public boolean setMatchable(boolean matchable) {
+		if (!matchable && matchedInstance != null) return false;
+		if (matchable && !method.isMatchable()) return false;
 
 		this.matchable = matchable;
+
+		return true;
 	}
 
 	@Override

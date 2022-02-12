@@ -1,18 +1,10 @@
 package matcher.gui;
 
+import javafx.scene.control.TabPane;
+import matcher.gui.tab.*;
+
 import java.util.ArrayList;
 import java.util.Collection;
-
-import javafx.scene.control.TabPane;
-import matcher.gui.tab.BytecodeTab;
-import matcher.gui.tab.ClassInfoTab;
-import matcher.gui.tab.ClassScoresTab;
-import matcher.gui.tab.FieldInfoTab;
-import matcher.gui.tab.HierarchyTab;
-import matcher.gui.tab.MemberScoresTab;
-import matcher.gui.tab.MethodInfoTab;
-import matcher.gui.tab.SourcecodeTab;
-import matcher.gui.tab.VarInfoTab;
 
 public class ContentPane extends TabPane implements IFwdGuiComponent {
 	public ContentPane(Gui gui, ISelectionProvider selectionProvider, boolean isSource) {
@@ -78,6 +70,10 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 			MemberScoresTab msTab = new MemberScoresTab(selectionProvider);
 			components.add(msTab);
 			getTabs().add(msTab);
+
+			MethodVarScoresTab mvsTab = new MethodVarScoresTab(selectionProvider);
+			components.add(mvsTab);
+			getTabs().add(mvsTab);
 		}
 	}
 

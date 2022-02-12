@@ -74,6 +74,11 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
+	public MatchableKind getKind() {
+		return MatchableKind.CLASS;
+	}
+
+	@Override
 	public String getId() {
 		return id;
 	}
@@ -257,15 +262,29 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
+	public boolean hasPotentialMatch() {
+		if (matchedClass != null) return true;
+		if (!isMatchable()) return false;
+
+		for (ClassInstance o : env.getOther().getClasses()) {
+			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		}
+
+		return false;
+	}
+
+	@Override
 	public boolean isMatchable() {
 		return matchable;
 	}
 
 	@Override
-	public void setMatchable(boolean matchable) {
-		assert matchable || matchedClass == null;
+	public boolean setMatchable(boolean matchable) {
+		if (!matchable && matchedClass != null) return false;
 
 		this.matchable = matchable;
+
+		return true;
 	}
 
 	@Override
@@ -287,7 +306,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		boolean anyUnmatched = false;
 
 		for (MethodInstance m : methods) {
-			if (m.isMatchable() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
+			if (m.hasPotentialMatch() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
 				anyUnmatched = true;
 				break;
 			}
@@ -295,7 +314,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 		if (anyUnmatched) {
 			for (MethodInstance a : methods) {
-				if (!a.isMatchable() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
+				if (!a.hasPotentialMatch() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
 
 				if (recursive && a.hasMatch() && !a.isFullyMatched(true)) return false;
 				// check for any potential match to ignore methods that are impossible to match
@@ -310,7 +329,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		anyUnmatched = false;
 
 		for (FieldInstance m : fields) {
-			if (m.isMatchable() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
+			if (m.hasPotentialMatch() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
 				anyUnmatched = true;
 				break;
 			}
@@ -318,7 +337,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 		if (anyUnmatched) {
 			for (FieldInstance a : fields) {
-				if (!a.isMatchable() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
+				if (!a.hasPotentialMatch() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
 
 				for (FieldInstance b : matchedClass.fields) {
 					if (b.isMatchable() && !b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
@@ -438,6 +457,10 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 	public boolean isAnnotation() {
 		return (getAccess() & Opcodes.ACC_ANNOTATION) != 0;
+	}
+
+	public boolean isRecord() {
+		return (getAccess() & Opcodes.ACC_RECORD) != 0;
 	}
 
 	public MethodInstance getMethod(String id) {
@@ -851,7 +874,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		return mappedName != null
 				|| matchedClass != null && matchedClass.mappedName != null
 				|| elementClass != null && elementClass.hasMappedName()
-				|| outerClass != null && outerClass.hasMappedName();
+				/*|| outerClass != null && outerClass.hasMappedName() TODO: for anonymous only?*/;
 	}
 
 	public boolean hasNoFullyMappedName() {
@@ -868,6 +891,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		this.mappedName = mappedName;
 	}
 
+	@Override
 	public String getMappedComment() {
 		if (mappedComment != null) {
 			return mappedComment;
@@ -878,6 +902,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		}
 	}
 
+	@Override
 	public void setMappedComment(String comment) {
 		if (comment != null && comment.isEmpty()) comment = null;
 
@@ -1083,7 +1108,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		}
 	}
 
-	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getId);
+	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getName);
 
 	private static final ClassInstance[] noArrays = new ClassInstance[0];
 	private static final MethodInstance[] noMethods = new MethodInstance[0];

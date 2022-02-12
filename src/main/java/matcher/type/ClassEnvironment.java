@@ -1,38 +1,5 @@
 package matcher.type;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.AbstractCollection;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.function.DoubleConsumer;
-import java.util.regex.Pattern;
-
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.InnerClassNode;
-import org.objectweb.asm.tree.MethodNode;
-
 import matcher.NameType;
 import matcher.Util;
 import matcher.classifier.ClassifierUtil;
@@ -40,8 +7,26 @@ import matcher.classifier.MatchingCache;
 import matcher.config.ProjectConfig;
 import matcher.srcprocess.Decompiler;
 import matcher.type.Signature.ClassSignature;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InnerClassNode;
+import org.objectweb.asm.tree.MethodNode;
 
-public class ClassEnvironment implements ClassEnv {
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.*;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.function.DoubleConsumer;
+import java.util.regex.Pattern;
+
+public final class ClassEnvironment implements ClassEnv {
 	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
 		final double cpInitCost = 0.05;
 		final double classReadCost = 0.2;
@@ -548,6 +533,11 @@ public class ClassEnvironment implements ClassEnv {
 
 	@Override
 	public ClassEnvironment getGlobal() {
+		return this;
+	}
+
+	@Override
+	public ClassEnv getOther() {
 		return this;
 	}
 

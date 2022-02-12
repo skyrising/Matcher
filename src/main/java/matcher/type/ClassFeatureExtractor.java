@@ -1,34 +1,17 @@
 package matcher.type;
 
-import java.nio.file.Path;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
-
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InvokeDynamicInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.TypeInsnNode;
-
 import matcher.NameType;
 import matcher.Util;
 import matcher.type.Analysis.CommonClasses;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.*;
+
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 public class ClassFeatureExtractor implements LocalClassEnv {
 	public ClassFeatureExtractor(ClassEnvironment env) {
@@ -258,20 +241,38 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	private void handleMethodInvocation(MethodInstance method, String rawOwner, String name, String desc, boolean toInterface, boolean isStatic) {
-		ClassInstance owner = getCreateClassInstance(ClassInstance.getId(rawOwner));
-		MethodInstance dst = owner.resolveMethod(name, desc, toInterface);
-
-		if (dst == null) { // presumably a method in (super)type missing from the configured class path
-			System.out.println("creating synthetic method "+rawOwner+"/"+name+desc);
-
-			dst = new MethodInstance(owner, name, desc, isStatic);
-			owner.addMethod(dst);
-		}
+		MethodInstance dst = resolveMethod(rawOwner, name, desc, toInterface, isStatic, true);
 
 		dst.refsIn.add(method);
 		method.refsOut.add(dst);
 		dst.cls.methodTypeRefs.add(method);
 		method.classRefs.add(dst.cls);
+	}
+
+	private MethodInstance resolveMethod(String owner, String name, String desc, boolean toInterface, boolean isStatic, boolean create) {
+		ClassInstance cls = getCreateClassInstance(ClassInstance.getId(owner), create);
+		if (cls == null) return null;
+
+		MethodInstance ret = cls.resolveMethod(name, desc, toInterface);
+
+		if (ret == null && create) {
+			System.out.printf("creating synthetic method %s/%s%s%n", owner, name, desc);
+
+			ret = new MethodInstance(cls, name, desc, isStatic);
+			cls.addMethod(ret);
+		}
+
+		return ret;
+	}
+
+	private MethodInstance resolveMethod(MethodInsnNode in) {
+		return resolveMethod(in.owner, in.name, in.desc,
+				Util.isCallToInterface(in), in.getOpcode() == Opcodes.INVOKESTATIC, false);
+	}
+
+	private MethodInstance resolveMethod(Handle handle) {
+		return resolveMethod(handle.getOwner(), handle.getName(), handle.getDesc(),
+				Util.isCallToInterface(handle), handle.getTag() == Opcodes.H_INVOKESTATIC, false);
 	}
 
 	/**
@@ -298,26 +299,25 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				MethodInstance prev;
 
 				if (isHierarchyBarrier(method)) {
-					if (method.hierarchyMembers == null) {
-						method.hierarchyMembers = Collections.singleton(method);
+					if (method.hierarchyData == null) {
+						method.hierarchyData = new MemberHierarchyData<>(Collections.singleton(method), method.nameObfuscatedLocal);
 					}
 				} else if ((prev = methods.get(method.id)) != null) {
-					if (method.hierarchyMembers == null) {
-						method.hierarchyMembers = prev.hierarchyMembers;
-						method.hierarchyMembers.add(method);
-					} else if (method.hierarchyMembers != prev.hierarchyMembers) {
-						method.hierarchyMembers.addAll(prev.hierarchyMembers);
-
-						for (MethodInstance m : prev.hierarchyMembers) {
-							m.hierarchyMembers = method.hierarchyMembers;
+					if (method.hierarchyData == null) {
+						method.hierarchyData = prev.hierarchyData;
+						method.hierarchyData.addMember(method);
+					} else if (method.hierarchyData != prev.hierarchyData) {
+						for (MethodInstance m : prev.hierarchyData.getMembers()) {
+							method.hierarchyData.addMember(m);
+							m.hierarchyData = method.hierarchyData;
 						}
 					}
 				} else {
 					methods.put(method.id, method);
 
-					if (method.hierarchyMembers == null) {
-						method.hierarchyMembers = Util.newIdentityHashSet();
-						method.hierarchyMembers.add(method);
+					if (method.hierarchyData == null) {
+						method.hierarchyData = new MemberHierarchyData<>(Util.newIdentityHashSet(), method.nameObfuscatedLocal);
+						method.hierarchyData.addMember(method);
 					}
 				}
 			}
@@ -337,36 +337,29 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	private void processClassD(ClassInstance cls, CommonClasses common) {
 		Queue<ClassInstance> toCheck = new ArrayDeque<>();
 		Set<ClassInstance> checked = Util.newIdentityHashSet();
-		Set<Set<MethodInstance>> nameObfChecked = Util.newIdentityHashSet();
+		Set<MemberHierarchyData<MethodInstance>> nameObfChecked = Util.newIdentityHashSet();
 
 		for (MethodInstance method : cls.getMethods()) {
-			if (method.hierarchyMembers.size() > 1) { // may have parent/child methods
+			if (method.hierarchyData.hasMultipleMembers()) { // may have parent/child methods
 				determineMethodRelations(method, toCheck, checked);
 
 				// update name obfuscated state if not done yet, the name is only obfuscated if it is for all hierarchy members
-				if (nameObfChecked.add(method.hierarchyMembers)) {
-					boolean nameObf = true;
-
-					for (MethodInstance m : method.hierarchyMembers) {
-						if (!m.nameObfuscated) {
-							nameObf = false;
+				if (nameObfChecked.add(method.hierarchyData) && method.hierarchyData.nameObfuscated) {
+					for (MethodInstance m : method.hierarchyData.getMembers()) {
+						if (!m.nameObfuscatedLocal) {
+							method.hierarchyData.nameObfuscated = false;
 							break;
-						}
-					}
-
-					if (!nameObf) {
-						for (MethodInstance m : method.hierarchyMembers) {
-							m.nameObfuscated = false;
 						}
 					}
 				}
 			}
 
+			determineMethodType(method);
 			//Analysis.analyzeMethod(method, common);
 		}
 
 		for (FieldInstance field : cls.getFields()) {
-			field.hierarchyMembers = Collections.singleton(field);
+			field.hierarchyData = new MemberHierarchyData<>(Collections.singleton(field), field.nameObfuscatedLocal);
 
 			if (field.writeRefs.size() == 1) {
 				Analysis.checkInitializer(field, this);
@@ -397,6 +390,55 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		}
 
 		checked.clear();
+	}
+
+	private void determineMethodType(MethodInstance method) {
+		MethodType type;
+
+		if (isLambdaMethod(method)) {
+			type = MethodType.LAMBDA_IMPL;
+		} else {
+			type = MethodType.OTHER;
+		}
+
+		method.type = type;
+	}
+
+	private boolean isLambdaMethod(MethodInstance method) {
+		if (!method.isSynthetic() || !method.isPrivate() || method.refsIn.isEmpty()) return false;
+
+		for (MethodInstance m : method.refsIn) {
+			boolean found = false;
+
+			for (Iterator<AbstractInsnNode> it = m.getAsmNode().instructions.iterator(); it.hasNext(); ) {
+				AbstractInsnNode ain = it.next();
+
+				switch (ain.getType()) {
+				case AbstractInsnNode.METHOD_INSN:
+					if (resolveMethod((MethodInsnNode) ain) == method) return false;
+					break;
+				case AbstractInsnNode.INVOKE_DYNAMIC_INSN: {
+					InvokeDynamicInsnNode in = (InvokeDynamicInsnNode) ain;
+					Handle impl = Util.getTargetHandle(in.bsm, in.bsmArgs);
+					if (impl == null) break;
+
+					if (resolveMethod(impl) == method) {
+						if (Util.isJavaLambdaMetafactory(in.bsm)) {
+							found = true;
+						} else {
+							return false;
+						}
+					}
+
+					break;
+				}
+				}
+			}
+
+			if (!found) return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -430,10 +472,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				memberIndex++;
 			} else if (!method.hasLocalTmpName()) {
 				String name = "vm"+envName+vmIdx.getAndIncrement();
-
-				for (MethodInstance m : method.getAllHierarchyMembers()) {
-					m.setTmpName(name);
-				}
+				method.setTmpName(name);
 			}
 		}
 
@@ -571,6 +610,11 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	@Override
 	public ClassEnvironment getGlobal() {
 		return env;
+	}
+
+	@Override
+	public ClassEnv getOther() {
+		return this == env.getEnvA() ? env.getEnvB() : env.getEnvA();
 	}
 
 	final ClassEnvironment env;

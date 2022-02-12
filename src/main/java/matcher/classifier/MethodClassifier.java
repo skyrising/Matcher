@@ -1,14 +1,8 @@
 package matcher.classifier;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import matcher.Util;
+import matcher.type.*;
+import matcher.type.Signature.MethodSignature;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -16,13 +10,7 @@ import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
-import matcher.Util;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
-import matcher.type.Signature.MethodSignature;
+import java.util.*;
 
 public class MethodClassifier {
 	public static void init() {
@@ -72,10 +60,10 @@ public class MethodClassifier {
 				dsts = new MethodInstance[] { src.getMatch() };
 			}
 		} else { // limit dsts to the same method tree if there's a matched src
-			MethodInstance matched = src.getMatchedHierarchyMember();
+			MethodInstance matched = src.getHierarchyMatch();
 
 			if (matched != null) {
-				Set<MethodInstance> dstHierarchyMembers = matched.getMatch().getAllHierarchyMembers();
+				Set<MethodInstance> dstHierarchyMembers = matched.getAllHierarchyMembers();
 				MethodInstance[] newDsts = new MethodInstance[dsts.length];
 				int writeIdx = 0;
 

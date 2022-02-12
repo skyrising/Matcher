@@ -1,12 +1,9 @@
 package matcher.mapping;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-
 import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
+
+import java.util.*;
 
 class MappingState {
 	public ClassMappingState getClass(String name) {
@@ -80,13 +77,16 @@ class MappingState {
 			return ret;
 		}
 
-		public VarMappingState getVar(int index, int lvIndex, int startOpIdx, int asmIndex) {
-			VarMappingState ret = varMap.get(index);
-
-			if (ret == null) {
-				ret = new VarMappingState(index, lvIndex, startOpIdx, asmIndex);
-				varMap.put(index, ret);
+		public VarMappingState getVar(int asmIndex, int lvIndex, int startOpIdx) {
+			for (VarMappingState var : vars) {
+				if (asmIndex >= 0 && var.asmIndex == asmIndex
+						|| lvIndex >= 0 && var.lvIndex == lvIndex && var.startOpIdx == startOpIdx) {
+					return var;
+				}
 			}
+
+			VarMappingState ret = new VarMappingState(lvIndex, startOpIdx, asmIndex);
+			vars.add(ret);
 
 			return ret;
 		}
@@ -96,7 +96,7 @@ class MappingState {
 		public String mappedName;
 		public String comment;
 		public final Map<Integer, ArgMappingState> argMap = new LinkedHashMap<>();
-		public final Map<Integer, VarMappingState> varMap = new LinkedHashMap<>();
+		public final List<VarMappingState> vars = new ArrayList<>();
 	}
 
 	public static class ArgMappingState {
@@ -113,14 +113,12 @@ class MappingState {
 	}
 
 	public static class VarMappingState {
-		public VarMappingState(int index, int lvIndex, int startOpIdx, int asmIndex) {
-			this.index = index;
+		public VarMappingState(int lvIndex, int startOpIdx, int asmIndex) {
 			this.lvIndex = lvIndex;
 			this.startOpIdx = startOpIdx;
 			this.asmIndex = asmIndex;
 		}
 
-		public final int index;
 		public final int lvIndex;
 		public final int startOpIdx;
 		public final int asmIndex;
@@ -141,6 +139,8 @@ class MappingState {
 		public String comment;
 	}
 
-	public final Map<String, ClassMappingState> classMap = new LinkedHashMap<>();
+	public String srcNamespace;
+	public final List<String> dstNamespaces = new ArrayList<>();
 	public final Map<String, String> metaMap = new LinkedHashMap<>();
+	public final Map<String, ClassMappingState> classMap = new LinkedHashMap<>();
 }

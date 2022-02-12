@@ -198,7 +198,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 				return String.format("-fx-text-fill: #%02x%02x%02x", (int) (red * 255), (int) (green * 255), (int) (blue * 255));
 			}
 		} else {
-			if (!item.isMatchable()) {
+			if (!item.hasPotentialMatch()) {
 				return dark ? "-fx-text-fill: silver;" : "-fx-text-fill: dimgray;";
 			} else if (item.getMatch() == null) {
 				return dark ? "-fx-text-fill: #FF006E;" : "-fx-text-fill: darkred;";
@@ -567,9 +567,12 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private static final Comparator<? extends Matchable<?>> matchStatusComparator = (a, b) -> {
 		// sort order: unmatched partially-matched fully-matched-shallow fully-matched-recursive unmatchable
 
-		if (a.isMatchable() != b.isMatchable()) {
-			return a.isMatchable() ? -1 : 1;
-		} else if (!a.isMatchable()) {
+		boolean aMatchable = a.hasPotentialMatch();
+		boolean bMatchable = b.hasPotentialMatch();
+
+		if (aMatchable != bMatchable) {
+			return aMatchable ? -1 : 1;
+		} else if (!aMatchable) {
 			return 0;
 		} else if (a.hasMatch() != b.hasMatch()) {
 			return a.hasMatch() ? 1 : -1;

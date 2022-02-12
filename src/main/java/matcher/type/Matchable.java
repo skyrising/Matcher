@@ -2,7 +2,9 @@ package matcher.type;
 
 import matcher.NameType;
 
-public interface Matchable<T extends Matchable> {
+public interface Matchable<T extends Matchable<T>> {
+	MatchableKind getKind();
+
 	String getId();
 	String getName();
 	String getName(NameType type);
@@ -15,13 +17,18 @@ public interface Matchable<T extends Matchable> {
 	boolean hasLocalTmpName();
 	boolean hasAuxName(int index);
 
+	String getMappedComment();
+	void setMappedComment(String comment);
+
 	Matchable<?> getOwner();
 	ClassEnv getEnv();
 
 	int getUid();
 
+	boolean hasPotentialMatch();
+
 	boolean isMatchable();
-	void setMatchable(boolean matchable);
+	boolean setMatchable(boolean matchable);
 
 	default boolean hasMatch() {
 		return getMatch() != null;

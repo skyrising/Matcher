@@ -1,27 +1,24 @@
 package matcher.gui.menu;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.SelectionMode;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
+import matcher.gui.GuiUtil;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class LoadProjectPane extends VBox {
 	LoadProjectPane(List<Path> paths, boolean verifyFiles, Window window, Node okButton) {
@@ -65,6 +62,14 @@ public class LoadProjectPane extends VBox {
 			list.getItems().removeIf(selected::contains);
 		});
 
+		Button upButton = new Button("up");
+		footer.getChildren().add(upButton);
+		upButton.setOnAction(event ->  GuiUtil.moveSelectionUp(list));
+
+		Button downButton = new Button("down");
+		footer.getChildren().add(downButton);
+		downButton.setOnAction(event ->  GuiUtil.moveSelectionDown(list));
+
 		ListChangeListener<Path> itemChangeListener = change -> {
 			okButton.setDisable(paths.isEmpty());
 		};
@@ -76,6 +81,8 @@ public class LoadProjectPane extends VBox {
 			boolean empty = selectedIndices.isEmpty();
 
 			removeButton.setDisable(empty);
+			upButton.setDisable(empty);
+			downButton.setDisable(empty);
 		};
 
 		list.getSelectionModel().getSelectedItems().addListener(selectChangeListener);

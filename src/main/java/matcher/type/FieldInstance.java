@@ -1,15 +1,15 @@
 package matcher.type;
 
-import java.util.List;
-import java.util.Set;
-
+import matcher.NameType;
+import matcher.Util;
+import matcher.classifier.ClassifierUtil;
+import matcher.type.Signature.FieldSignature;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldNode;
 
-import matcher.NameType;
-import matcher.Util;
-import matcher.type.Signature.FieldSignature;
+import java.util.List;
+import java.util.Set;
 
 public final class FieldInstance extends MemberInstance<FieldInstance> {
 	/**
@@ -34,6 +34,11 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 		this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : FieldSignature.parse(asmNode.signature, cls.getEnv());
 
 		type.fieldTypeRefs.add(this);
+	}
+
+	@Override
+	public MatchableKind getKind() {
+		return MatchableKind.FIELD;
 	}
 
 	@Override
@@ -101,6 +106,18 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 		if (uid < 0) return null;
 
 		return cls.env.getGlobal().fieldUidPrefix+uid;
+	}
+
+	@Override
+	public boolean hasPotentialMatch() {
+		if (matchedInstance != null) return true;
+		if (!cls.hasMatch() || !isMatchable()) return false;
+
+		for (FieldInstance o : cls.getMatch().getFields()) {
+			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		}
+
+		return false;
 	}
 
 	@Override

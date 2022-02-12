@@ -2,7 +2,8 @@ plugins {
 	id 'java-library'
 	id 'application'
 	id 'maven-publish'
-	id 'org.openjfx.javafxplugin' version '0.0.8'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
+	id 'org.openjfx.javafxplugin' version '0.0.10'
 	id 'de.jjohannes.extra-java-module-info' version '0.5'
 }
 
@@ -47,12 +48,12 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 dependencies {
-	implementation "com.github.javaparser:javaparser-core:3.8.3"
+    implementation "com.github.javaparser:javaparser-core:3.8.3"
 	implementation "org.quiltmc:procyon-quilt-compilertools:0.5.35.local"
-	api "org.ow2.asm:asm:9.0"
-	implementation "org.ow2.asm:asm-commons:9.0"
-	api "org.ow2.asm:asm-tree:9.0"
-	implementation "org.ow2.asm:asm-util:9.0"
+	api "org.ow2.asm:asm:9.1"
+	implementation "org.ow2.asm:asm-commons:9.1"
+	api "org.ow2.asm:asm-tree:9.1"
+	implementation "org.ow2.asm:asm-util:9.1"
 	implementation "org.quiltmc:cfr:0.0.2"
 	implementation "org.quiltmc:quiltflower:1.5.0"
 }
@@ -69,6 +70,8 @@ application {
 	mainModule = 'matcher'
 	mainClass = 'matcher.Main'
 }
+
+build.dependsOn(shadowJar)
 
 publishing {
 	publications {

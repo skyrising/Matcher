@@ -1,43 +1,29 @@
 package matcher.gui.menu;
 
-import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
-
 import javafx.beans.InvalidationListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.MultipleSelectionModel;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.RowConstraints;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
-import matcher.gui.GuiConstants;
 import matcher.gui.Gui.SelectedFile;
+import matcher.gui.GuiConstants;
+import matcher.gui.GuiUtil;
+
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.util.*;
+import java.util.stream.Stream;
 
 public class NewProjectPane extends GridPane {
 	NewProjectPane(ProjectConfig config, Window window, Node okButton) {
@@ -93,11 +79,11 @@ public class NewProjectPane extends GridPane {
 			classPathA.clear();
 			classPathA.addAll(classPathB);
 			classPathB.setAll(paths);
-			
+
 			String tmp = nonObfuscatedClassPatternA.getText();
 			nonObfuscatedClassPatternA.setText(nonObfuscatedClassPatternB.getText());
 			nonObfuscatedClassPatternB.setText(tmp);
-			
+
 			tmp = nonObfuscatedMemberPatternA.getText();
 			nonObfuscatedMemberPatternA.setText(nonObfuscatedMemberPatternB.getText());
 			nonObfuscatedMemberPatternB.setText(tmp);
@@ -222,41 +208,11 @@ public class NewProjectPane extends GridPane {
 
 		Button upButton = new Button("up");
 		footer.getChildren().add(upButton);
-		upButton.setOnAction(event -> {
-			MultipleSelectionModel<Path> selection = list.getSelectionModel();
-			List<Integer> selected = new ArrayList<>(selection.getSelectedIndices());
-
-			list.getSelectionModel().clearSelection();
-
-			for (int idx : selected) {
-				if (idx > 0 && !selection.isSelected(idx - 1)) {
-					Path e = list.getItems().remove(idx);
-					list.getItems().add(idx - 1, e);
-					selection.select(idx - 1);
-				} else {
-					selection.select(idx);
-				}
-			}
-		});
+		upButton.setOnAction(event -> GuiUtil.moveSelectionUp(list));
 
 		Button downButton = new Button("down");
 		footer.getChildren().add(downButton);
-		downButton.setOnAction(event -> {
-			MultipleSelectionModel<Path> selection = list.getSelectionModel();
-			List<Integer> selected = new ArrayList<>(selection.getSelectedIndices());
-			Collections.reverse(selected);
-			list.getSelectionModel().clearSelection();
-
-			for (int idx : selected) {
-				if (idx < list.getItems().size() - 1 && !selection.isSelected(idx + 1)) {
-					Path e = list.getItems().remove(idx);
-					list.getItems().add(idx + 1, e);
-					selection.select(idx + 1);
-				} else {
-					selection.select(idx);
-				}
-			}
-		});
+		downButton.setOnAction(event -> GuiUtil.moveSelectionDown(list));
 
 		ListChangeListener<Path> changeListener = change -> {
 			List<Integer> selectedIndices = list.getSelectionModel().getSelectedIndices();

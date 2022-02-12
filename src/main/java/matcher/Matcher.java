@@ -1,23 +1,17 @@
 package matcher;
 
+import matcher.classifier.*;
+import matcher.config.Config;
+import matcher.config.ProjectConfig;
+import matcher.type.*;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
@@ -25,24 +19,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import matcher.classifier.ClassClassifier;
-import matcher.classifier.ClassifierLevel;
-import matcher.classifier.FieldClassifier;
-import matcher.classifier.IRanker;
-import matcher.classifier.MethodClassifier;
-import matcher.classifier.MethodVarClassifier;
-import matcher.classifier.RankResult;
-import matcher.config.Config;
-import matcher.config.ProjectConfig;
-import matcher.type.ClassEnv;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.InputFile;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
 
 public class Matcher {
 	public static void init() {
@@ -113,11 +89,33 @@ public class Matcher {
 		init(config, progressReceiver);
 	}
 
+	public static Path resolvePath(Collection<Path> inputDirs, InputFile inputFile) throws IOException {
+		List<Path> ret = resolvePaths(inputDirs, Collections.singletonList(inputFile));
+
+		return ret.get(0);
+	}
+
 	public static List<Path> resolvePaths(Collection<Path> inputDirs, Collection<InputFile> inputFiles) throws IOException {
 		List<Path> ret = new ArrayList<>(inputFiles.size());
 
-		for (InputFile inputFile : inputFiles) {
-			boolean found = false;
+		inputFileLoop: for (InputFile inputFile : inputFiles) {
+			if (inputFile.pathHint != null) {
+				if (inputFile.pathHint.isAbsolute()) {
+					if (Files.isRegularFile(inputFile.pathHint) && inputFile.equals(inputFile.pathHint)) {
+						ret.add(inputFile.pathHint);
+						continue inputFileLoop;
+					}
+				} else {
+					for (Path inputDir : inputDirs) {
+						Path file = inputDir.resolve(inputFile.pathHint);
+
+						if (Files.isRegularFile(file) && inputFile.equals(file)) {
+							ret.add(file);
+							continue inputFileLoop;
+						}
+					}
+				}
+			}
 
 			for (Path inputDir : inputDirs) {
 				try (Stream<Path> matches = Files.find(inputDir, Integer.MAX_VALUE, (path, attr) -> inputFile.equals(path), FileVisitOption.FOLLOW_LINKS)) {
@@ -125,15 +123,14 @@ public class Matcher {
 
 					if (file != null) {
 						ret.add(file);
-						found = true;
-						break;
+						continue inputFileLoop;
 					}
 				} catch (UncheckedIOException e) {
 					throw e.getCause();
 				}
 			}
 
-			if (!found) throw new IOException("can't find input "+inputFile.getFileName());
+			throw new IOException("can't find input "+inputFile);
 		}
 
 		return ret;
@@ -193,14 +190,16 @@ public class Matcher {
 				}
 			}
 
-			MethodInstance matchedSrc = src.getMatchedHierarchyMember();
-			if (matchedSrc == null) continue;
+			MethodInstance matchedDst = src.getHierarchyMatch();
+			if (matchedDst == null) continue;
 
-			Set<MethodInstance> dstHierarchyMembers = matchedSrc.getMatch().getAllHierarchyMembers();
+			Set<MethodInstance> dstHierarchyMembers = matchedDst.getAllHierarchyMembers();
 			if (dstHierarchyMembers.size() <= 1) continue;
 
 			for (MethodInstance dst : b.getMethods()) {
 				if (dstHierarchyMembers.contains(dst)) {
+					src.setMatchable(true);
+					dst.setMatchable(true);
 					match(src, dst);
 					break;
 				}
@@ -269,13 +268,31 @@ public class Matcher {
 		System.out.println("match method "+a+" -> "+b+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		if (a.getMatch() != null) {
-			unmatchArgsVars(a);
-			a.getMatch().setMatch(null);
+			if (matchHierarchyMembers) {
+				for (MethodInstance m : a.getAllHierarchyMembers()) {
+					if (m.hasMatch()) {
+						unmatchArgsVars(m);
+						m.getMatch().setMatch(null);
+					}
+				}
+			} else {
+				unmatchArgsVars(a);
+				a.getMatch().setMatch(null);
+			}
 		}
 
 		if (b.getMatch() != null) {
-			b.getMatch().setMatch(null);
-			unmatchArgsVars(b);
+			if (matchHierarchyMembers) {
+				for (MethodInstance m : b.getAllHierarchyMembers()) {
+					if (m.hasMatch()) {
+						unmatchArgsVars(m);
+						m.getMatch().setMatch(null);
+					}
+				}
+			} else {
+				unmatchArgsVars(b);
+				b.getMatch().setMatch(null);
+			}
 		}
 
 		a.setMatch(b);

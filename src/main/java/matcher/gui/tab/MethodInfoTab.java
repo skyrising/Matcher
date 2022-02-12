@@ -1,13 +1,5 @@
 package matcher.gui.tab;
 
-import static matcher.gui.tab.ClassInfoTab.format;
-import static matcher.gui.tab.ClassInfoTab.getName;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.stream.Collectors;
-
-import org.objectweb.asm.tree.MethodNode;
-
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
@@ -25,6 +17,14 @@ import matcher.gui.ISelectionProvider;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
+import org.objectweb.asm.tree.MethodNode;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.stream.Collectors;
+
+import static matcher.gui.tab.ClassInfoTab.format;
+import static matcher.gui.tab.ClassInfoTab.getName;
 
 public class MethodInfoTab extends Tab implements IGuiComponent {
 	public MethodInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
@@ -63,6 +63,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Ret type", retTypeLabel, grid, row);
 		row = addRow("Access", accessLabel, grid, row);
 		row = addRow("Signature", sigLabel, grid, row);
+		row = addRow("Type", typeLabel, grid, row);
 		row = addRow("Parents", parentLabel, grid, row);
 		row = addRow("Children", childLabel, grid, row);
 		row = addRow("Hierarchy", hierarchyLabel, grid, row);
@@ -120,6 +121,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			retTypeLabel.setText("-");
 			accessLabel.setText("-");
 			sigLabel.setText("-");
+			typeLabel.setText("-");
 			parentLabel.setText("-");
 			childLabel.setText("-");
 			hierarchyLabel.setText("-");
@@ -149,6 +151,8 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 
 			MethodNode asmNode = method.getAsmNode();
 			sigLabel.setText(asmNode == null || asmNode.signature == null ? "-" : asmNode.signature);
+
+			typeLabel.setText(method.getType().name());
 
 			parentLabel.setText(!method.getParents().isEmpty() ? formatClass(method.getParents(), nameType) : "-");
 			childLabel.setText(!method.isFinal() ? formatClass(method.getChildren(), nameType) : "-");
@@ -193,6 +197,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 	private final Label retTypeLabel = new Label();
 	private final Label accessLabel = new Label();
 	private final Label sigLabel = new Label();
+	private final Label typeLabel = new Label();
 	private final Label parentLabel = new Label();
 	private final Label childLabel = new Label();
 	private final Label hierarchyLabel = new Label();

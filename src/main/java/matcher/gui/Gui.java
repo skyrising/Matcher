@@ -101,6 +101,10 @@ public class Gui extends Application {
 		return scene;
 	}
 
+	public void addListeningComponent(IGuiComponent component) {
+		components.add(component);
+	}
+
 	public MainMenuBar getMenu() {
 		return menu;
 	}

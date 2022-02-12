@@ -1,27 +1,21 @@
 package matcher;
 
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.MethodInsnNode;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.MethodInsnNode;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 public class Util {
 	public static <T> Set<T> newIdentityHashSet() {
@@ -75,6 +69,39 @@ public class Util {
 		return fs;
 	}
 
+	public static boolean clearDir(Path path, Predicate<Path> disallowed) throws IOException {
+		try (Stream<Path> stream = Files.walk(path, FileVisitOption.FOLLOW_LINKS)) {
+			if (stream.anyMatch(disallowed)) return false;
+		}
+
+		AtomicBoolean ret = new AtomicBoolean(true);
+
+		Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				if (disallowed.test(file)) {
+					ret.set(false);
+
+					return FileVisitResult.TERMINATE;
+				} else {
+					Files.delete(file);
+
+					return FileVisitResult.CONTINUE;
+				}
+			}
+
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+				if (exc != null) throw exc;
+				if (!dir.equals(path)) Files.delete(dir);
+
+				return FileVisitResult.CONTINUE;
+			}
+		});
+
+		return ret.get();
+	}
+
 	public static void closeSilently(Closeable c) {
 		if (c == null) return;
 
@@ -126,7 +153,7 @@ public class Util {
 	public enum AFElementType {
 		Class(1), Method(2), Field(4), Parameter(8), InnerClass(16);
 
-		private AFElementType(int assoc) {
+		AFElementType(int assoc) {
 			this.assoc = assoc;
 		}
 
@@ -149,6 +176,8 @@ public class Util {
 	public static Handle getTargetHandle(Handle bsm, Object[] bsmArgs) {
 		if (isJavaLambdaMetafactory(bsm)) {
 			return (Handle) bsmArgs[1];
+		} else if (isIrrelevantBsm(bsm)) {
+			return null;
 		} else {
 			System.out.printf("unknown invokedynamic bsm: %s/%s%s (tag=%d iif=%b)%n", bsm.getOwner(), bsm.getName(), bsm.getDesc(), bsm.getTag(), bsm.isInterface());
 
@@ -164,6 +193,10 @@ public class Util {
 						|| bsm.getName().equals("altMetafactory")
 						&& bsm.getDesc().equals("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"))
 				&& !bsm.isInterface();
+	}
+
+	public static boolean isIrrelevantBsm(Handle bsm) {
+		return bsm.getOwner().equals("java/lang/invoke/StringConcatFactory");
 	}
 
 	public static boolean isValidJavaIdentifier(String s) {

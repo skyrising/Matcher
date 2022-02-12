@@ -69,27 +69,44 @@ public class MatchesIo {
 							throw new IllegalStateException(state.name());
 						}
 
-						int pos = line.indexOf('\t', 2);
+						// v1: \t\t<file>
+						// v2: \t\t<size>\t<sha256>\t<file>
+						// v3: \t\t<size>\t<hashAlg>\t<hash>\t<file>
+
+						final int indent = 2;
+						int sizeEnd = line.indexOf('\t', indent);
 						long size = InputFile.unknownSize;
 						byte[] hash = null;
+						InputFile.HashType hashType = null;
+						int fileStart;
 
-						if (pos == -1) {
-							pos = 2;
-						} else if (!verifyInputs) {
-							if (pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
-							pos = line.indexOf('\t', pos + 1);
-							if (pos == -1 || pos == pos + 1 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
-							pos++;
+						if (sizeEnd < 0) { // v1
+							fileStart = indent;
 						} else {
-							if (pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
-							size = Long.parseLong(line.substring(2, pos));
-							int pos2 = line.indexOf('\t', pos + 1);
-							if (pos2 == -1 || pos2 == pos + 1 || pos2 + 1 >= line.length()) throw new IOException("invalid matches file");
-							hash = Base64.getDecoder().decode(line.substring(pos + 1, pos2));
-							pos = pos2 + 1;
+							if (verifyInputs) {
+								size = Long.parseLong(line.substring(indent, sizeEnd));
+							}
+
+							int hashOrAlgEnd = line.indexOf('\t', sizeEnd + 1);
+							int v3HashEnd = line.indexOf('\t', hashOrAlgEnd + 1);
+							int hashStart;
+
+							if (v3HashEnd < 0) { // v2
+								hashStart = sizeEnd + 1;
+								fileStart = hashOrAlgEnd + 1;
+								hashType = InputFile.HashType.SHA256;
+							} else { // v3
+								hashStart = hashOrAlgEnd + 1;
+								fileStart = v3HashEnd + 1;
+								hashType = InputFile.HashType.valueOf(line.substring(sizeEnd + 1, hashOrAlgEnd));
+							}
+
+							if (verifyInputs) {
+								hash = Base64.getDecoder().decode(line.substring(hashStart, fileStart - 1));
+							}
 						}
 
-						inputFiles.add(new InputFile(line.substring(pos), size, hash));
+						inputFiles.add(new InputFile(line.substring(fileStart), size, hash, hashType));
 					} else {
 						switch (line.substring(1, line.length() - 1)) {
 						case "a":
@@ -151,6 +168,8 @@ public class MatchesIo {
 							System.err.println("Unmatchable a/b class "+idA+"/"+idB);
 							currentClass = null;
 						} else {
+							currentClass.setMatchable(true);
+							target.setMatchable(true);
 							matcher.match(currentClass, target);
 						}
 					} else if (line.startsWith("cu\t")) { // class unmatchable
@@ -189,6 +208,8 @@ public class MatchesIo {
 									System.err.println("Unmatchable a/b method "+idA+"/"+idB);
 									currentMethod = null;
 								} else {
+									a.setMatchable(true);
+									b.setMatchable(true);
 									matcher.match(a, b);
 								}
 							} else {
@@ -202,6 +223,8 @@ public class MatchesIo {
 								} else if (!a.isMatchable() || !b.isMatchable()) {
 									System.err.println("Unmatchable a/b field "+idA+"/"+idB);
 								} else {
+									a.setMatchable(true);
+									b.setMatchable(true);
 									matcher.match(a, b);
 								}
 							}
@@ -223,12 +246,8 @@ public class MatchesIo {
 							} else {
 								if (member.hasMatch()) matcher.unmatch(member);
 
-								if (member instanceof MethodInstance) {
-									for (MemberInstance<?> m : member.getAllHierarchyMembers()) {
-										m.setMatchable(false);
-									}
-								} else {
-									member.setMatchable(false);
+								if (!member.setMatchable(false)) {
+									System.err.printf("can't mark %s as unmatchable, already matched?%n", member);
 								}
 							}
 						}
@@ -263,6 +282,8 @@ public class MatchesIo {
 								System.err.println("Unmatchable a/b method "+type+" "+idxA+"/"+idxB+" in method "+currentMethod+"/"+matchedMethod);
 								currentMethod = null;
 							} else {
+								varsA[idxA].setMatchable(true);
+								varsB[idxB].setMatchable(true);
 								matcher.match(varsA[idxA], varsB[idxB]);
 							}
 						}
@@ -293,6 +314,7 @@ public class MatchesIo {
 								MethodVarInstance var = vars[idx];
 
 								if (var.hasMatch()) matcher.unmatch(var);
+
 								var.setMatchable(false);
 							}
 						}
@@ -379,7 +401,9 @@ public class MatchesIo {
 			out.write("\t\t");
 			out.write(Long.toString(file.size));
 			out.write('\t');
-			out.write(Base64.getEncoder().encodeToString(file.sha256));
+			out.write(file.hashType.name());
+			out.write('\t');
+			out.write(Base64.getEncoder().encodeToString(file.hash));
 			out.write('\t');
 			out.write(file.path.getFileName().toString().replace('\n', ' '));
 			out.write('\n');
