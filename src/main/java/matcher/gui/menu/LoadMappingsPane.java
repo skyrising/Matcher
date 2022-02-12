@@ -4,11 +4,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import matcher.gui.GuiConstants;
@@ -54,11 +50,11 @@ class LoadMappingsPane extends GridPane {
 
 		rbA = new RadioButton("A (left)");
 		rbA.setToggleGroup(group);
+		rbA.setSelected(true);
 		hBox.getChildren().add(rbA);
 
 		rbB = new RadioButton("B (right)");
 		rbB.setToggleGroup(group);
-		rbB.setSelected(true);
 		hBox.getChildren().add(rbB);
 
 		add(hBox, 1, 3, 2, 1);
