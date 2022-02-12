@@ -87,17 +87,17 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 	}
 
 	private static int getTypeIdx(BodyDeclaration<?> decl) {
-		// order: enum-cst mth/ctor/annotation static-init/static-field inst-init/inst-field inst-type static-type
+		// order: enum-cst static-init/static-field inst-init/inst-field mth/ctor/annotation inst-type static-type
 		// note: static-init <-> fields and inst-init <-> inst-field can't be reordered with each other as their order determines execution order
 
 		if (decl.isEnumConstantDeclaration()) {
 			return 0;
 		} else if (decl.isAnnotationMemberDeclaration() || decl.isCallableDeclaration()) {
-			return 1;
+			return 3;
 		} else if (decl.isFieldDeclaration()) {
-			return ((FieldDeclaration) decl).getModifiers().contains(Modifier.STATIC) ? 2 : 3;
+			return ((FieldDeclaration) decl).getModifiers().contains(Modifier.STATIC) ? 1 : 2;
 		} else if (decl.isInitializerDeclaration()) {
-			return ((InitializerDeclaration) decl).isStatic() ? 2 : 3;
+			return ((InitializerDeclaration) decl).isStatic() ? 1 : 2;
 		} else if (decl.isTypeDeclaration()) {
 			if (decl.isClassOrInterfaceDeclaration() && ((ClassOrInterfaceDeclaration) decl).isInterface() || ((TypeDeclaration<?>) decl).isStatic()) {
 				return 5;
