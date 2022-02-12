@@ -155,10 +155,10 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		String name = getName(item, full);
 		String mappedName = getMappedName(item, full);
 
-		if (name.equals(mappedName)) {
-			return name;
+		if (name.equals(mappedName) || item instanceof MethodVarInstance) {
+			return mappedName;
 		} else {
-			return name+" - "+mappedName;
+			return mappedName + " - " + name;
 		}
 	}
 
