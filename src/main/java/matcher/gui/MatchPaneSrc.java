@@ -498,7 +498,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private String getName(Matchable<?> m, boolean full) {
-		return m.getDisplayName(gui.getNameType().withMapped(false).withUnmatchedTmp(true), full && m instanceof ClassInstance);
+		return m.getDisplayName(gui.getNameType().withMapped(false).withUnmatchedTmp(true), full && (m instanceof ClassInstance || m instanceof MethodVarInstance));
 	}
 
 	private String getMappedName(Matchable<?> m) {
@@ -506,7 +506,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private String getMappedName(Matchable<?> m, boolean full) {
-		return m.getDisplayName(gui.getNameType().withMapped(true).withUnmatchedTmp(true), full && m instanceof ClassInstance);
+		return m.getDisplayName(gui.getNameType().withMapped(true).withUnmatchedTmp(true), full && (m instanceof ClassInstance || m instanceof MethodVarInstance));
 	}
 
 	@Override

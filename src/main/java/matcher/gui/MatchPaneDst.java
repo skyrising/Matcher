@@ -1,34 +1,16 @@
 package matcher.gui;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.Callable;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import matcher.NameType;
-import matcher.classifier.ClassClassifier;
-import matcher.classifier.ClassifierLevel;
-import matcher.classifier.FieldClassifier;
-import matcher.classifier.MethodClassifier;
-import matcher.classifier.MethodVarClassifier;
-import matcher.classifier.RankResult;
-import matcher.type.ClassEnv;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.Matchable;
-import matcher.type.MatchType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.classifier.*;
+import matcher.type.*;
+
+import java.util.*;
+import java.util.concurrent.Callable;
 
 public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelectionProvider {
 	public MatchPaneDst(Gui gui, MatchPaneSrc srcPane) {
@@ -84,7 +66,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	private class DstListCell extends StyledListCell<RankResult<? extends Matchable<?>>> {
 		@Override
 		protected String getText(RankResult<? extends Matchable<?>> item) {
-			boolean full = item.getSubject() instanceof ClassInstance;
+			boolean full = item.getSubject() instanceof ClassInstance || item.getSubject() instanceof MethodVarInstance;
 
 			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(gui.getNameType(), full));
 		}

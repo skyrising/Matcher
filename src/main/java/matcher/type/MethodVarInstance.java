@@ -72,6 +72,12 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	}
 
 	@Override
+	public String getDisplayName(NameType type, boolean full) {
+		if (!full) return getName(type);
+		return getName(type) + " - " + getType().getDisplayName(type, false);
+	}
+
+	@Override
 	public String getName(NameType type) {
 		if (type == NameType.PLAIN) {
 			return hasValidOrigName() ? origName : getTypedId();
