@@ -130,6 +130,7 @@ public class Fernflower implements Decompiler {
 		@Override
 		public StructClass getClass(String name) {
 			if (DEBUG) System.out.printf("getClass(%s)%n", name);
+			if (name == null) return null;
 
 			// use classes as a cache, load anything missing on demand
 			StructClass ret = ownClasses.get(name);
