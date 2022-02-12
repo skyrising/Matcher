@@ -1,19 +1,6 @@
 package matcher.gui.tab;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Queue;
-import java.util.Set;
-
+import com.github.javaparser.*;
 import javafx.concurrent.Worker.State;
 import javafx.scene.control.Tab;
 import javafx.scene.web.WebView;
@@ -29,6 +16,11 @@ import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MatchType;
 import matcher.type.MethodInstance;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SourcecodeTab extends Tab implements IGuiComponent {
 	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
@@ -101,13 +93,41 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 				if (exc != null) {
 					exc.printStackTrace();
 
-					StringWriter sw = new StringWriter();
-					exc.printStackTrace(new PrintWriter(sw));
-
 					if (exc instanceof SrcParseException) {
-						displayText("parse error: "+sw.toString()+"decompiled source:\n"+((SrcParseException) exc).source);
+						String source = ((SrcParseException) exc).source;
+						String info;
+						if (exc.getCause() instanceof ParseProblemException) {
+							String[] lines = source.split("\n");
+							List<Problem> problems = ((ParseProblemException) exc.getCause()).getProblems();
+							info = problems.stream().flatMap(p -> {
+								Optional<TokenRange> location = p.getLocation();
+								Optional<Range> range = location.flatMap(l -> {
+									Optional<Range> begin = l.getBegin().getRange();
+									Optional<Range> end = l.getEnd().getRange();
+									if (begin.isPresent() && end.isPresent()) {
+										return Optional.of(begin.get().withEnd(end.get().end));
+									}
+									return Optional.empty();
+								});
+								List<String> messageLines = new ArrayList<>();
+								messageLines.add(p.getVerboseMessage());
+								if (range.isPresent()) {
+									Position posStart = range.get().begin;
+									Position posEnd = range.get().end;
+									messageLines.addAll(Arrays.asList(lines).subList(posStart.line - 1, Math.min(posStart.line + 10, posEnd.line - 1)));
+								}
+								return messageLines.stream();
+							}).collect(Collectors.joining("\n"));
+						} else {
+							info = exc.getCause().getMessage();
+						}
+						displayText(
+							"parse error:\n" + info + "\ndecompiled source:\n" + source);
 					} else {
-						displayText("decompile error: "+sw.toString());
+
+						StringWriter sw = new StringWriter();
+						exc.printStackTrace(new PrintWriter(sw));
+						displayText("decompile error: " + sw);
 					}
 				} else {
 					double prevScroll = isRefresh ? getScrollTop() : 0;
@@ -136,7 +156,13 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 
 	private void jumpTo(String anchorId) {
 		if (unmatchedTmp) System.out.println("jump to "+anchorId);
-		addWebViewTask(() -> webView.getEngine().executeScript("var anchorElem = document.getElementById('"+anchorId+"'); if (anchorElem !== null) document.body.scrollTop = anchorElem.getBoundingClientRect().top + window.scrollY;"));
+		addWebViewTask(() -> {
+			try {
+				webView.getEngine().executeScript("selectElement('"+anchorId+"')");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		});
 	}
 
 	private void displayText(String text) {
@@ -144,9 +170,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	}
 
 	private void displayHtml(String html) {
-		String curTemplate = Config.getDarkTheme() ? darkTemplate : lightTemplate;
-
-		webView.getEngine().loadContent(curTemplate.replace("%text%", html));
+		webView.getEngine().loadContent(TEMPLATE.replace("%theme%", Config.getDarkTheme() ? "dark" : "light").replace("%text%", html));
 	}
 
 	private double getScrollTop() {
@@ -190,8 +214,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 		}
 	}
 
-	private static final String lightTemplate = readTemplate("ui/codeview/light.htm");
-	private static final String darkTemplate = readTemplate("ui/codeview/dark.htm");
+	private static final String TEMPLATE = readTemplate("ui/codeview/template.html");
 
 	private final Gui gui;
 	private final ISelectionProvider selectionProvider;

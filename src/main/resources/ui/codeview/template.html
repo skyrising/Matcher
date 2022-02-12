@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>src</title>
+    <meta charset="utf-8">
+    <style>
+        .dark {
+            --background-color: #2B2B2B;
+            --foreground-color: #D0D0D0;
+            --comment-color: #808080;
+            --javadoc-color: #629755;
+            --keyword-color: #CC7832;
+            --string-color: #6A8759;
+            --field-color: #9876AA;
+            --annotation-color: #BBB529;
+            --variable-color: #8879ab;
+            --method-name-color: #FFC66D;
+            --number-color: #6897BB;
+            --selected-color: #214283;
+        }
+        .light {
+            --background-color: #FFFFFF;
+            --foreground-color: #080808;
+            --javadoc-color: #8C8C8C;
+            --comment-color: #8C8C8C;
+            --keyword-color: #0033B3;
+            --string-color: #067D17;
+            --field-color: #871094;
+            --annotation-color: #9E880D;
+            --variable-color: #000000;
+            --method-name-color: #00627A;
+            --selected-color: #A6D2FF;
+        }
+
+		body {
+			background-color: var(--background-color);
+			font-family: monospace;
+			white-space: pre;
+			margin: 0.2rem;
+			tab-size: 4;
+			color: var(--foreground-color);
+		}
+
+		.comment {
+			color: var(--comment-color);
+		}
+
+        .javadoc {
+            color: var(--javadoc-color);
+        }
+
+		.keyword {
+			color: var(--keyword-color);
+		}
+
+		.string {
+			color: var(--string-color);
+		}
+
+		.field {
+			color: var(--field-color);
+		}
+
+        .field.constant {
+            font-style: italic;
+        }
+
+		.annotation {
+			color: var(--annotation-color);
+		}
+
+		.variable {
+			color: var(--variable-color);
+		}
+
+        .method.name {
+            color: var(--method-name-color);
+        }
+
+        .number {
+            color: var(--number-color);
+        }
+
+        .selected {
+            display: inline-block;
+            min-width: 100%;
+            background-color: var(--selected-color);
+        }
+	</style>
+</head>
+<script>
+window.selectElement = function (id) {
+    for (const selected of document.getElementsByClassName('selected')) {
+        selected.classList.remove('selected')
+    }
+    const newSelected = document.getElementById(id)
+    if (newSelected) {
+        newSelected.scrollIntoView()
+        newSelected.classList.add('selected')
+    }
+}
+</script>
+<body class="%theme%">%text%</body>
+</html>
