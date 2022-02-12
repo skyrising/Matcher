@@ -55,7 +55,7 @@ dependencies {
 	api "org.ow2.asm:asm-tree:9.1"
 	implementation "org.ow2.asm:asm-util:9.1"
 	implementation "org.quiltmc:cfr:0.0.2"
-	implementation "org.quiltmc:quiltflower:1.5.0"
+	implementation "org.quiltmc:quiltflower:1.7.0"
 }
 
 // TODO: Add Automatic-Module-Name to all these in Quilt forks
@@ -63,7 +63,7 @@ extraJavaModuleInfo {
 	automaticModule("cfr-0.0.2.jar", "cfr")
 	automaticModule("procyon-quilt-compilertools-0.5.35.local.jar", "procyon.compilertools")
 	automaticModule("procyon-quilt-core-0.5.35.local.jar", "procyon.core")
-	automaticModule("quiltflower-1.5.0.jar", "intellij.fernflower")
+	automaticModule("quiltflower-1.7.0.jar", "intellij.fernflower")
 }
 
 application {
