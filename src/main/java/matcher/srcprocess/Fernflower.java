@@ -18,7 +18,11 @@ public class Fernflower implements Decompiler {
 	public String decompile(ClassInstance cls, ClassFeatureExtractor env, NameType nameType) {
 		// invoke ff with on-demand class lookup into matcher's state and string based output
 		Map<String, Object> properties = new HashMap<>(IFernflowerPreferences.DEFAULTS);
-		properties.put(IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES, "1");
+		properties.putAll(Map.of(
+				IFernflowerPreferences.REMOVE_SYNTHETIC, "0", // Easier to match synthetic methods
+				IFernflowerPreferences.REMOVE_BRIDGE, "0", // Easier to match bridge methods
+				IFernflowerPreferences.USE_JAD_VARNAMING, "1" // JAD-style names are often more readable
+		));
 
 		try (ResultSaver resultSaver = new ResultSaver()) {
 			BaseDecompiler decompiler = new BaseDecompiler(
